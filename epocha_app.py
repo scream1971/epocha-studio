@@ -7,7 +7,7 @@ import time
 st.set_page_config(page_title="EPOCHA Multi-Engine", layout="wide")
 st.markdown("<style>.stApp { background-color: #0d1117; color: white; }</style>", unsafe_allow_html=True)
 
-# Key-Abfrage
+# Key-Abfrage (Secrets oder Sidebar)
 api_key = st.secrets.get("GOOGLE_API_KEY", st.sidebar.text_input("API Key", type="password"))
 
 st.title("🏛️ EPOCHA Multi-AI Studio")
@@ -19,7 +19,6 @@ with col1:
     v_title = st.text_input("Titel (für Nano Banana)", placeholder="z.B. Schattenfresser")
     v_desc = st.text_area("Szene beschreiben", height=100)
     
-    # --- MULTI-KI WAHL ---
     engine = st.selectbox("KI-Modell wählen:", [
         "Nano Banana (Beste Qualität/Text)", 
         "Turbo Engine (Schnell & Stabil)", 
@@ -33,12 +32,10 @@ with col1:
             with st.spinner(f"Verbinde mit {engine}..."):
                 w, h = (1280, 720) if "16:9" in format_choice else (720, 1280)
                 
-                # Modell-Logik
-                model_param = "flux" # Standard
+                model_param = "flux"
                 if "Turbo" in engine: model_param = "turbo"
-                if "Creative" in engine: model_param = "any" # Zufälliges kreatives Modell
+                if "Creative" in engine: model_param = "any"
                 
-                # Prompt-Optimierung
                 prompt = urllib.parse.quote(f"cinematic history, {v_title}, {v_desc}, 8k")
                 img_url = f"https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&nologo=true&model={model_param}&seed={time.time()}"
                 
@@ -46,9 +43,9 @@ with col1:
                     res = requests.get(img_url, timeout=30)
                     if res.status_code == 200:
                         st.session_state.current_img = res.content
-                        st.success(f"Erfolgreich generiert mit {engine}")
+                        st.success(f"Erfolgreich generiert!")
                     else:
-                        st.error(f"Fehler {res.status_code}. Versuche es mit der 'Turbo Engine'!")
+                        st.error(f"Fehler {res.status_code}. Probiere die 'Turbo Engine'.")
                 except:
                     st.error("Server-Verbindung fehlgeschlagen.")
         else:
@@ -56,15 +53,13 @@ with col1:
 
 with col2:
     st.subheader("🖼️ Vorschau")
+    # Hier war der Fehler: Alle Zeilen unter "with col2:" müssen exakt gleich weit eingerückt sein
     if 'current_img' in st.session_state:
         st.image(st.session_state.current_img, use_container_width=True)
         st.download_button("💾 DOWNLOAD", st.session_state.current_img, f"epocha_{int(time.time())}.png")
     else:
-        st.info("Wähle eine KI und klicke auf Generieren.")
-
-st.divider()
-st.caption("Tipp: Wenn Nano Banana (530) überlastet ist, schalte auf 'Turbo Engine' um.")
         st.info("Dein generiertes Bild wird hier angezeigt.")
         st.image("https://via.placeholder.com/1280x720.png?text=Warte+auf+Generierung...", use_container_width=True)
+
 
 
