@@ -3,63 +3,70 @@ import requests
 import urllib.parse
 import time
 
-# --- DESIGN ---
+# --- DESIGN SETUP ---
 st.set_page_config(page_title="EPOCHA AI - Nano Banana Engine", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #0b0f19; color: white; }
-    .stTextInput input, .stTextArea textarea { border: 2px solid #fbbf24 !important; }
+    .stTextInput input, .stTextArea textarea { border: 2px solid #fbbf24 !important; background-color: #1e293b !important; color: white !important; }
+    .stButton>button { background: linear-gradient(to right, #fbbf24, #f59e0b); color: black; font-weight: bold; border: none; }
     </style>
     """, unsafe_allow_html=True)
 
-# Key-Abfrage
-try:
+# Key-Abfrage aus den Secrets oder Sidebar
+if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
-except:
+else:
     api_key = st.sidebar.text_input("Google API Key", type="password")
 
 st.title("🏛️ EPOCHA Studio x Nano Banana")
-st.write("Optimiert für hochauflösende historische Thumbnails und Shorts.")
 
 col1, col2 = st.columns([1, 1], gap="large")
 
 with col1:
-    st.subheader("Thumbnail-Design")
-    v_title = st.text_input("Haupt-Text für das Bild", placeholder="z.B. REICH DER SCHATTENFRESSER")
-    v_desc = st.text_area("Bildbeschreibung", placeholder="z.B. Ein römischer Zenturio steht vor einem brennenden Tempel, düster, cineastisch", height=150)
-    
-    format_choice = st.radio("Format:", ["16:9 (YouTube)", "9:16 (TikTok/Shorts)"], horizontal=True)
+    st.subheader("Design-Konfiguration")
+    v_title = st.text_input("Titel im Bild (z.B. Schattenfresser)")
+    v_desc = st.text_area("Was soll auf dem Bild zu sehen sein?", height=150)
+    format_choice = st.radio("Format:", ["16:9 (YouTube)", "9:16 (Shorts)"], horizontal=True)
 
-    if st.button("MIT NANO BANANA GENERIEREN"):
+    if st.button("BILD GENERIEREN"):
         if v_title and v_desc and api_key:
-            with st.spinner("Nano Banana berechnet die Details..."):
+            with st.spinner("Nano Banana Engine erstellt dein Bild..."):
                 w, h = (1280, 720) if "16:9" in format_choice else (720, 1280)
                 
-                # NANO BANANA liebt präzise Anweisungen für Text im Bild
-                # Wir bauen den Prompt so, dass der Titel prominent erscheint
-                refined_prompt = f"Cinematic historical style, {v_desc}. Central focus on the atmosphere. High fidelity, 8k. The text '{v_title}' is integrated artistically into the scene."
+                # Optimierter Prompt für Nano Banana / Flux
+                refined_prompt = f"Cinematic historical, {v_desc}. The text '{v_title}' is written in epic bold letters. 8k resolution, highly detailed."
                 safe_prompt = urllib.parse.quote(refined_prompt)
                 
-                # Wir nutzen die stabilste Route zur Engine
                 img_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width={w}&height={h}&nologo=true&model=flux&seed={time.time()}"
                 
                 try:
                     res = requests.get(img_url, timeout=30)
                     if res.status_code == 200:
-                        st.session_state.nano_img = res.content
+                        st.session_state.web_img = res.content
+                        st.session_state.img_format = "png"
                     else:
-                        st.error("Server-Limit erreicht. Bitte 10 Sekunden warten.")
-                except:
-                    st.error("Verbindung zum Nano-Server unterbrochen.")
+                        st.error(f"Server-Limit (Code {res.status_code}). Bitte 10 Sekunden warten.")
+                except Exception as e:
+                    st.error("Verbindungsfehler zum Server.")
         else:
             st.warning("Bitte Titel, Beschreibung und Key prüfen!")
 
 with col2:
     st.subheader("Vorschau")
-    if 'nano_img' in st.session_state:
-        st.image(st.session_state.nano_img, use_container_width=True)
-        st.success("Generiert mit Nano Banana Technologie")
-        st.download_button("THUMBNAIL SPEICHERN", st.session_state.nano_img, "epocha_nano.png", "image/png")
+    # WICHTIG: Erst prüfen, ob 'web_img' überhaupt existiert!
+    if 'web_img' in st.session_state and st.session_state.web_img is not None:
+        st.image(st.session_state.web_img, use_container_width=True)
+        
+        # Download Button nur anzeigen, wenn Bild da ist
+        st.download_button(
+            label="💾 BILD HERUNTERLADEN",
+            data=st.session_state.web_img,
+            file_name=f"epocha_{int(time.time())}.png",
+            mime="image/png"
+        )
     else:
-        st.info("Warte auf Eingabe...")
-        st.download_button("Download", st.session_state.web_img, "thumbnail.png")
+        # Schönerer Platzhalter
+        st.info("Dein generiertes Bild wird hier angezeigt.")
+        st.image("https://via.placeholder.com/1280x720.png?text=Warte+auf+Generierung...", use_container_width=True)
+
