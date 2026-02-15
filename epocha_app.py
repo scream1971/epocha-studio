@@ -3,70 +3,68 @@ import requests
 import urllib.parse
 import time
 
-# --- DESIGN SETUP ---
-st.set_page_config(page_title="EPOCHA AI - Nano Banana Engine", layout="wide")
-st.markdown("""
-    <style>
-    .stApp { background-color: #0b0f19; color: white; }
-    .stTextInput input, .stTextArea textarea { border: 2px solid #fbbf24 !important; background-color: #1e293b !important; color: white !important; }
-    .stButton>button { background: linear-gradient(to right, #fbbf24, #f59e0b); color: black; font-weight: bold; border: none; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- DESIGN ---
+st.set_page_config(page_title="EPOCHA Multi-Engine", layout="wide")
+st.markdown("<style>.stApp { background-color: #0d1117; color: white; }</style>", unsafe_allow_html=True)
 
-# Key-Abfrage aus den Secrets oder Sidebar
-if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-else:
-    api_key = st.sidebar.text_input("Google API Key", type="password")
+# Key-Abfrage
+api_key = st.secrets.get("GOOGLE_API_KEY", st.sidebar.text_input("API Key", type="password"))
 
-st.title("🏛️ EPOCHA Studio x Nano Banana")
+st.title("🏛️ EPOCHA Multi-AI Studio")
 
-col1, col2 = st.columns([1, 1], gap="large")
+col1, col2 = st.columns([1, 1], gap="medium")
 
 with col1:
-    st.subheader("Design-Konfiguration")
-    v_title = st.text_input("Titel im Bild (z.B. Schattenfresser)")
-    v_desc = st.text_area("Was soll auf dem Bild zu sehen sein?", height=150)
-    format_choice = st.radio("Format:", ["16:9 (YouTube)", "9:16 (Shorts)"], horizontal=True)
+    st.subheader("🎨 Bild-Konfiguration")
+    v_title = st.text_input("Titel (für Nano Banana)", placeholder="z.B. Schattenfresser")
+    v_desc = st.text_area("Szene beschreiben", height=100)
+    
+    # --- MULTI-KI WAHL ---
+    engine = st.selectbox("KI-Modell wählen:", [
+        "Nano Banana (Beste Qualität/Text)", 
+        "Turbo Engine (Schnell & Stabil)", 
+        "Creative Engine (Künstlerisch)"
+    ])
+    
+    format_choice = st.radio("Format:", ["16:9", "9:16"], horizontal=True)
 
     if st.button("BILD GENERIEREN"):
-        if v_title and v_desc and api_key:
-            with st.spinner("Nano Banana Engine erstellt dein Bild..."):
+        if v_desc:
+            with st.spinner(f"Verbinde mit {engine}..."):
                 w, h = (1280, 720) if "16:9" in format_choice else (720, 1280)
                 
-                # Optimierter Prompt für Nano Banana / Flux
-                refined_prompt = f"Cinematic historical, {v_desc}. The text '{v_title}' is written in epic bold letters. 8k resolution, highly detailed."
-                safe_prompt = urllib.parse.quote(refined_prompt)
+                # Modell-Logik
+                model_param = "flux" # Standard
+                if "Turbo" in engine: model_param = "turbo"
+                if "Creative" in engine: model_param = "any" # Zufälliges kreatives Modell
                 
-                img_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width={w}&height={h}&nologo=true&model=flux&seed={time.time()}"
+                # Prompt-Optimierung
+                prompt = urllib.parse.quote(f"cinematic history, {v_title}, {v_desc}, 8k")
+                img_url = f"https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&nologo=true&model={model_param}&seed={time.time()}"
                 
                 try:
                     res = requests.get(img_url, timeout=30)
                     if res.status_code == 200:
-                        st.session_state.web_img = res.content
-                        st.session_state.img_format = "png"
+                        st.session_state.current_img = res.content
+                        st.success(f"Erfolgreich generiert mit {engine}")
                     else:
-                        st.error(f"Server-Limit (Code {res.status_code}). Bitte 10 Sekunden warten.")
-                except Exception as e:
-                    st.error("Verbindungsfehler zum Server.")
+                        st.error(f"Fehler {res.status_code}. Versuche es mit der 'Turbo Engine'!")
+                except:
+                    st.error("Server-Verbindung fehlgeschlagen.")
         else:
-            st.warning("Bitte Titel, Beschreibung und Key prüfen!")
+            st.warning("Bitte gib eine Beschreibung ein.")
 
 with col2:
-    st.subheader("Vorschau")
-    # WICHTIG: Erst prüfen, ob 'web_img' überhaupt existiert!
-    if 'web_img' in st.session_state and st.session_state.web_img is not None:
-        st.image(st.session_state.web_img, use_container_width=True)
-        
-        # Download Button nur anzeigen, wenn Bild da ist
-        st.download_button(
-            label="💾 BILD HERUNTERLADEN",
-            data=st.session_state.web_img,
-            file_name=f"epocha_{int(time.time())}.png",
-            mime="image/png"
-        )
+    st.subheader("🖼️ Vorschau")
+    if 'current_img' in st.session_state:
+        st.image(st.session_state.current_img, use_container_width=True)
+        st.download_button("💾 DOWNLOAD", st.session_state.current_img, f"epocha_{int(time.time())}.png")
     else:
-        # Schönerer Platzhalter
+        st.info("Wähle eine KI und klicke auf Generieren.")
+
+st.divider()
+st.caption("Tipp: Wenn Nano Banana (530) überlastet ist, schalte auf 'Turbo Engine' um.")
         st.info("Dein generiertes Bild wird hier angezeigt.")
         st.image("https://via.placeholder.com/1280x720.png?text=Warte+auf+Generierung...", use_container_width=True)
+
 
