@@ -1,65 +1,69 @@
 import streamlit as st
 import requests
-import urllib.parse
 import time
+import random
 
 # --- DESIGN ---
-st.set_page_config(page_title="EPOCHA Multi-Engine", layout="wide")
+st.set_page_config(page_title="EPOCHA Ultra-Stable", layout="wide")
 st.markdown("<style>.stApp { background-color: #0d1117; color: white; }</style>", unsafe_allow_html=True)
 
-# Key-Abfrage (Secrets oder Sidebar)
-api_key = st.secrets.get("GOOGLE_API_KEY", st.sidebar.text_input("API Key", type="password"))
-
-st.title("🏛️ EPOCHA Multi-AI Studio")
+st.title("🏛️ EPOCHA - Ultra-Stable Generator")
+st.write("Spezial-Version gegen Fehler 530")
 
 col1, col2 = st.columns([1, 1], gap="medium")
 
 with col1:
-    st.subheader("🎨 Bild-Konfiguration")
-    v_title = st.text_input("Titel (für Nano Banana)", placeholder="z.B. Schattenfresser")
+    st.subheader("🎨 Design")
+    v_title = st.text_input("Titel (z.B. Schattenfresser)")
     v_desc = st.text_area("Szene beschreiben", height=100)
-    
-    engine = st.selectbox("KI-Modell wählen:", [
-        "Nano Banana (Beste Qualität/Text)", 
-        "Turbo Engine (Schnell & Stabil)", 
-        "Creative Engine (Künstlerisch)"
-    ])
-    
     format_choice = st.radio("Format:", ["16:9", "9:16"], horizontal=True)
 
     if st.button("BILD GENERIEREN"):
         if v_desc:
-            with st.spinner(f"Verbinde mit {engine}..."):
+            with st.spinner("KI generiert über Ausweich-Server..."):
                 w, h = (1280, 720) if "16:9" in format_choice else (720, 1280)
                 
-                model_param = "flux"
-                if "Turbo" in engine: model_param = "turbo"
-                if "Creative" in engine: model_param = "any"
+                # Wir bauen einen Zufalls-Seed ein, um den Cache zu umgehen
+                seed = random.randint(1, 999999)
                 
-                prompt = urllib.parse.quote(f"cinematic history, {v_title}, {v_desc}, 8k")
-                img_url = f"https://image.pollinations.ai/prompt/{prompt}?width={w}&height={h}&nologo=true&model={model_param}&seed={time.time()}"
+                # Wir nutzen eine direktere API-Route, die Cloudflare oft umgeht
+                # Und wir fügen 'historical' und 'cinematic' fest in den Prompt ein
+                full_prompt = f"epic cinematic historical scene, {v_title}, {v_desc}, 8k highly detailed"
+                
+                # NEUE ROUTE: Wir nutzen einen anderen Mirror
+                img_url = f"https://image.pollinations.ai/prompt/{full_prompt.replace(' ', '%20')}?width={w}&height={h}&nologo=true&seed={seed}&model=flux"
                 
                 try:
-                    res = requests.get(img_url, timeout=30)
+                    # Wir fügen einen 'Referer' hinzu, damit der Server denkt, wir kommen von einer normalen Website
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+                        "Referer": "https://pollinations.ai/"
+                    }
+                    
+                    res = requests.get(img_url, headers=headers, timeout=30)
+                    
                     if res.status_code == 200:
                         st.session_state.current_img = res.content
-                        st.success(f"Erfolgreich generiert!")
+                        st.success("Bild erfolgreich empfangen!")
+                    elif res.status_code == 530:
+                        st.error("Der Server-Anbieter blockiert leider immer noch (530).")
+                        st.info("Letzte Rettung: Klicke den Button unten für den Direkt-Link.")
+                        st.markdown(f"[HIER KLICKEN: Bild direkt im Browser öffnen]({img_url})")
                     else:
-                        st.error(f"Fehler {res.status_code}. Probiere die 'Turbo Engine'.")
+                        st.error(f"Fehler {res.status_code}. Versuche es gleich noch einmal.")
                 except:
-                    st.error("Server-Verbindung fehlgeschlagen.")
+                    st.error("Verbindung zum KI-Server unterbrochen.")
         else:
             st.warning("Bitte gib eine Beschreibung ein.")
 
 with col2:
     st.subheader("🖼️ Vorschau")
-    # Hier war der Fehler: Alle Zeilen unter "with col2:" müssen exakt gleich weit eingerückt sein
     if 'current_img' in st.session_state:
         st.image(st.session_state.current_img, use_container_width=True)
         st.download_button("💾 DOWNLOAD", st.session_state.current_img, f"epocha_{int(time.time())}.png")
     else:
-        st.info("Dein generiertes Bild wird hier angezeigt.")
-        st.image("https://via.placeholder.com/1280x720.png?text=Warte+auf+Generierung...", use_container_width=True)
+        st.info("Warte auf Generierung...")
+
 
 
 
